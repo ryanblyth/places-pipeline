@@ -1,0 +1,65 @@
+{
+    "vintage": {
+      "acs_year": 2024,
+      "acs_product": "acs5",
+      "acs_dataset": "profile",
+      "boundary_year": 2024,
+      "boundary_name": "cb_2024_us_place_500k"
+    },
+    "join_key": {
+      "type": "geoid",
+      "geoid_format": "{state}{place}",
+      "state_len": 2,
+      "place_len": 5
+    },
+    "census_api": {
+      "base_url": "https://api.census.gov/data/2024/acs/acs5/profile",
+      "for": "place:*",
+      "in": "state:*"
+    },
+    "fields": [
+      { "key": "pop_total", "var": "DP05_0001E", "type": "int", "units": "people" },
+      { "key": "median_age", "var": "DP05_0018E", "type": "float", "units": "years" },
+      { "key": "pct_under18", "var": "DP05_0019PE", "type": "float", "units": "percent" },
+      { "key": "pct_over65", "var": "DP05_0024PE", "type": "float", "units": "percent" },
+  
+      { "key": "pct_hispanic", "var": "DP05_0090PE", "type": "float", "units": "percent" },
+      { "key": "pct_nonhisp_white", "var": "DP05_0096PE", "type": "float", "units": "percent" },
+      { "key": "pct_nonhisp_black", "var": "DP05_0097PE", "type": "float", "units": "percent" },
+      { "key": "pct_nonhisp_asian", "var": "DP05_0099PE", "type": "float", "units": "percent" },
+  
+      { "key": "households", "var": "DP02_0001E", "type": "int", "units": "households" },
+      { "key": "avg_household_size", "var": "DP02_0016E", "type": "float", "units": "people_per_household" },
+      { "key": "pct_hs_grad", "var": "DP02_0062PE", "type": "float", "units": "percent" },
+      { "key": "pct_bach_plus", "var": "DP02_0068PE", "type": "float", "units": "percent" },
+  
+      { "key": "pct_in_labor_force", "var": "DP03_0002PE", "type": "float", "units": "percent" },
+      { "key": "unemployment_rate", "var": "DP03_0005PE", "type": "float", "units": "percent" },
+      { "key": "median_hh_income", "var": "DP03_0062E", "type": "int", "units": "usd" },
+      { "key": "per_capita_income", "var": "DP03_0088E", "type": "int", "units": "usd" },
+      { "key": "pct_poverty", "var": "DP03_0128PE", "type": "float", "units": "percent" },
+      { "key": "pct_insured", "var": "DP03_0096PE", "type": "float", "units": "percent" },
+  
+      { "key": "pct_drive_alone", "var": "DP03_0019PE", "type": "float", "units": "percent" },
+      { "key": "pct_carpool", "var": "DP03_0020PE", "type": "float", "units": "percent" },
+      { "key": "pct_transit", "var": "DP03_0021PE", "type": "float", "units": "percent" },
+      { "key": "pct_wfh", "var": "DP03_0024PE", "type": "float", "units": "percent" },
+      { "key": "mean_commute_min", "var": "DP03_0025E", "type": "float", "units": "minutes" },
+  
+      { "key": "housing_units", "var": "DP04_0001E", "type": "int", "units": "units" },
+      { "key": "pct_vacant", "var": "DP04_0003PE", "type": "float", "units": "percent" },
+      { "key": "pct_owner_occ", "var": "DP04_0046PE", "type": "float", "units": "percent" },
+      { "key": "pct_no_vehicle", "var": "DP04_0058PE", "type": "float", "units": "percent" },
+      { "key": "median_home_value", "var": "DP04_0089E", "type": "int", "units": "usd" },
+      { "key": "median_owner_cost_mortgage", "var": "DP04_0101E", "type": "int", "units": "usd_per_month" },
+      { "key": "median_gross_rent", "var": "DP04_0134E", "type": "int", "units": "usd_per_month" }
+    ],
+    "outputs": {
+      "dist_dir": "dist/acs5_2024",
+      "pmtiles_places": "dist/places_cb_2024_500k.pmtiles",
+      "attrs_dir": "dist/acs5_2024/attrs_by_state",
+      "attrs_filename_template": "attrs_places_acs5_2024_{state}.json",
+      "manifest": "dist/acs5_2024/manifest.json"
+    }
+  }
+  
