@@ -6,17 +6,27 @@
       "boundary_year": 2024,
       "boundary_name": "cb_2024_us_place_500k"
     },
+  
+    "pmtiles": {
+      "file": "dist/places_cb_2024_500k_z5.pmtiles",
+      "url": "https://data.storypath.studio/pmtiles/places_cb_2024_500k_z5.pmtiles",
+      "layer": "places",
+      "promoteId": "GEOID"
+    },
+  
     "join_key": {
       "type": "geoid",
       "geoid_format": "{state}{place}",
       "state_len": 2,
       "place_len": 5
     },
+  
     "census_api": {
       "base_url": "https://api.census.gov/data/2024/acs/acs5/profile",
       "for": "place:*",
       "in": "state:*"
     },
+  
     "fields": [
       { "key": "pop_total", "var": "DP05_0001E", "type": "int", "units": "people" },
       { "key": "median_age", "var": "DP05_0018E", "type": "float", "units": "years" },
@@ -54,12 +64,19 @@
       { "key": "median_owner_cost_mortgage", "var": "DP04_0101E", "type": "int", "units": "usd_per_month" },
       { "key": "median_gross_rent", "var": "DP04_0134E", "type": "int", "units": "usd_per_month" }
     ],
+  
     "outputs": {
       "dist_dir": "dist/acs5_2024",
-      "pmtiles_places": "dist/places_cb_2024_500k.pmtiles",
+  
       "attrs_dir": "dist/acs5_2024/attrs_by_state",
       "attrs_filename_template": "attrs_places_acs5_2024_{state}.json",
-      "manifest": "dist/acs5_2024/manifest.json"
+  
+      "manifest": "dist/acs5_2024/manifest.json",
+  
+      "pmtiles_places_file": "dist/places_cb_2024_500k_z5.pmtiles",
+      "pmtiles_places_url": "https://data.storypath.studio/pmtiles/places_cb_2024_500k_z5.pmtiles",
+      "pmtiles_places_layer": "places",
+      "pmtiles_places_promoteId": "GEOID"
     }
   }
   
