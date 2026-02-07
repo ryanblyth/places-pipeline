@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Places PMTiles + ACS attrs + Chart.js (Smoke Test)</title>
+
+  <link rel="icon" href="data:," />
+
+  <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+
+  <script src="https://unpkg.com/pmtiles@4.3.2/dist/pmtiles.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <style>
+    html, body { height: 100%; margin: 0; }
+    body { overflow: hidden; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+
+    /* Full-screen map */
+    #map { position: fixed; inset: 0; }
+
+    /* Overlay panel */
+    #panel {
+      position: fixed;
+      top: 12px;
+      right: 12px;
+      bottom: 12px;
+      width: 380px;
+      max-width: calc(100vw - 24px);
+      background: rgba(255,255,255,0.96);
+      border: 1px solid rgba(0,0,0,.12);
+      border-radius: 10px;
+      padding: 12px;
+      box-sizing: border-box;
+      overflow: auto;
+      box-shadow: 0 8px 24px rgba(0,0,0,.12);
+      backdrop-filter: blur(6px);
+    }
+
+    @media (max-width: 900px) {
+      #panel {
+        left: 12px;
+        right: 12px;
+        width: auto;
+        height: 42vh;
+        bottom: 12px;
+        top: auto;
+      }
+    }
+
+    #title { font-size: 16px; margin: 0 0 8px; }
+    #meta { font-size: 12px; opacity: .75; margin: 0 0 12px; }
+    canvas { width: 100% !important; height: 240px !important; }
+    .hint { font-size: 12px; opacity: .75; margin-top: 12px; }
+    code { background: rgba(0,0,0,.06); padding: 1px 4px; border-radius: 4px; }
+
+    .btnrow { display: flex; gap: 8px; margin: 8px 0 12px; flex-wrap: wrap; }
+    button {
+      font: inherit;
+      font-size: 12px;
+      padding: 6px 10px;
+      border-radius: 8px;
+      border: 1px solid rgba(0,0,0,.15);
+      background: white;
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="map"></div>
+
+  <div id="panel">
+    <h1 id="title">Click a place</h1>
+    <div id="meta">Waiting for selection…</div>
+
+    <div class="btnrow">
+      <button id="btn-reset-view">Reset view</button>
+      <button id="btn-clear">Clear selection</button>
+    </div>
+
+    <canvas id="chart"></canvas>
+
+    <div class="hint">
+      Data sources:<br/>
+      PMTiles: <code>places_cb_2024_500k_z5.pmtiles</code><br/>
+      attrs: <code>/attrs/places/acs5_2024/attrs_by_state/…</code>
+    </div>
+  </div>
+
+  <script>
+    // ---- URLs ----
+    // NOTE: make sure this matches your real hosted path
+    const PMTILES_URL = "https://data.storypath.studio/pmtiles/places/places_cb_2024_500k_z5.pmtiles";
+    const ATTRS_BASE  = "https://data.storypath.studio/attrs/places/acs5_2024";
+    const ATTRS_FILE  = (statefp) => `${ATTRS_BASE}/attrs_by_state/attrs_places_acs5_2024_${statefp}.json`;
+
+    // ---- PMTiles protocol ----
+    const protocol = new pmtiles.Protocol();
+    maplibregl.addProtocol("pmtiles", protocol.tile);
+
+    // ---- Map ----
+    const DEFAULT_VIEW = { center: [-105.2, 40.4], zoom: 8, bearing: 0, pitch: 0 };
+
+    const map = new maplibregl.Map({
+      container: "map",
+      style: "https://demotiles.maplibre.org/style.json",
+      ...DEFAULT_VIEW,
+      // These reduce accidental “funny angle” behavior:
+      dragRotate: false,
+      pitchWithRotate: false
+    });
+
+    map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-left");
+
+    // Hard-disable pitch/rotate interactions (trackpad + right-drag)
+    map.dragRotate.disable();
+    if (map.touchPitch) map.touchPitch.disable();
+    if (map.touchZoomRotate) map.touchZoomRotate.disableRotation();
+
+    // Resize fixes (helps if browser/toolbars change viewport)
+    const safeResize = () => { try { map.resize(); } catch {} };
+    window.addEventListener("resize", safeResize);
+
+    // ---- Chart ----
+    const ctx = document.getElementById("chart");
+    const chart = new Chart(ctx, {
+      type: "bar",
+      data: { labels: [], datasets: [{ label: "Value", data: [] }] },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false,
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true } }
+      }
+    });
+
+    const titleEl = document.getElementById("title");
+    const metaEl  = document.getElementById("meta");
+
+    function updateChart(placeName, geoid, attrs) {
+      titleEl.textContent = placeName || "Unknown place";
+      metaEl.textContent = `GEOID: ${geoid}`;
+
+      const metrics = [
+        ["Population", attrs.pop_total],
+        ["Median HH Income", attrs.median_hh_income],
+        ["Median Gross Rent", attrs.median_gross_rent],
+        ["Median Home Value", attrs.median_home_value],
+        ["Unemployment %", attrs.unemployment_rate],
+        ["Poverty %", attrs.pct_poverty],
+        ["WFH %", attrs.pct_wfh]
+      ];
+
+      chart.data.labels = metrics.map(m => m[0]);
+      chart.data.datasets[0].data = metrics.map(m => (m[1] ?? null));
+      chart.update();
+    }
+
+    // ---- Attrs cache ----
+    const cacheByState = new Map();
+
+    async function loadStateAttrs(statefp) {
+      if (cacheByState.has(statefp)) return cacheByState.get(statefp);
+
+      const url = ATTRS_FILE(statefp);
+      const r = await fetch(url);
+      if (!r.ok) throw new Error(`Failed to fetch attrs for state ${statefp}: ${r.status}`);
+      const data = await r.json();
+      cacheByState.set(statefp, data);
+      return data;
+    }
+
+    function getGeoidFromFeature(f) {
+      const g = String(f.id ?? f.properties?.GEOID ?? "");
+      return g.length === 7 ? g : null;
+    }
+
+    let selectedId = null;
+
+    function clearSelection() {
+      if (selectedId !== null) {
+        map.setFeatureState({ source: "places", sourceLayer: "places", id: selectedId }, { selected: false });
+      }
+      selectedId = null;
+      titleEl.textContent = "Click a place";
+      metaEl.textContent = "Waiting for selection…";
+      chart.data.labels = [];
+      chart.data.datasets[0].data = [];
+      chart.update();
+    }
+
+    document.getElementById("btn-reset-view").addEventListener("click", () => {
+      map.easeTo({ ...DEFAULT_VIEW, duration: 300 });
+      safeResize();
+    });
+
+    document.getElementById("btn-clear").addEventListener("click", () => clearSelection());
+
+    map.on("load", () => {
+      // final resize after style load
+      setTimeout(safeResize, 0);
+
+      map.addSource("places", {
+        type: "vector",
+        url: `pmtiles://${PMTILES_URL}`,
+        promoteId: "GEOID"
+      });
+
+      map.addLayer({
+        id: "places-fill",
+        type: "fill",
+        source: "places",
+        "source-layer": "places",
+        paint: {
+          "fill-color": [
+            "case",
+            ["boolean", ["feature-state", "selected"], false],
+            "rgba(255, 0, 255, 0.45)",
+            "rgba(0, 255, 255, 0.12)"
+          ]
+        }
+      });
+
+      map.addLayer({
+        id: "places-outline",
+        type: "line",
+        source: "places",
+        "source-layer": "places",
+        paint: {
+          "line-color": "rgba(255, 0, 255, 1.0)",
+          "line-width": 2.5
+        }
+      });
+
+      map.on("mouseenter", "places-fill", () => map.getCanvas().style.cursor = "pointer");
+      map.on("mouseleave", "places-fill", () => map.getCanvas().style.cursor = "");
+
+      map.on("click", "places-fill", async (e) => {
+        const f = e.features?.[0];
+        if (!f) return;
+
+        const geoid = getGeoidFromFeature(f);
+        const name = f.properties?.NAME ?? "Unknown";
+        if (!geoid) {
+          console.warn("No GEOID on clicked feature", f);
+          return;
+        }
+
+        console.log("CLICKED PLACE", { name, geoid });
+
+        // toggle selection state
+        if (selectedId !== null) {
+          map.setFeatureState({ source: "places", sourceLayer: "places", id: selectedId }, { selected: false });
+        }
+        selectedId = geoid;
+        map.setFeatureState({ source: "places", sourceLayer: "places", id: selectedId }, { selected: true });
+
+        const statefp = geoid.slice(0, 2);
+
+        try {
+          const stateAttrs = await loadStateAttrs(statefp);
+          const attrs = stateAttrs[geoid];
+
+          if (!attrs) {
+            titleEl.textContent = name;
+            metaEl.textContent = `GEOID: ${geoid} — no attrs found`;
+            return;
+          }
+
+          updateChart(name, geoid, attrs);
+
+          new maplibregl.Popup({ closeButton: true })
+            .setLngLat(e.lngLat)
+            .setHTML(`<strong>${name}</strong><br/>GEOID: ${geoid}<br/>Median HH Income: ${attrs.median_hh_income ?? "—"}`)
+            .addTo(map);
+
+        } catch (err) {
+          console.error(err);
+          titleEl.textContent = name;
+          metaEl.textContent = `GEOID: ${geoid} — error loading attrs`;
+        }
+      });
+    });
+  </script>
+</body>
+</html>
