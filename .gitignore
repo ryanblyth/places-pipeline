@@ -1,0 +1,55 @@
+# ---- OS / editor junk ----
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.vscode/
+.idea/
+
+# ---- Python ----
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+
+# ---- Logs ----
+*.log
+logs/
+log/
+
+# ---- Data pipeline outputs (DO NOT COMMIT) ----
+data/raw/
+data/work/
+data/dist/
+
+# If you also use a top-level dist/ (common)
+dist/
+
+# Common large GIS / tile artifacts
+*.zip
+*.shp
+*.shx
+*.dbf
+*.prj
+*.cpg
+*.gpkg
+*.geojson
+*.jsonl
+*.parquet
+*.feather
+
+# Tiles
+*.mbtiles
+*.pmtiles
+
+# Tippecanoe / SQLite temp
+*.sqlite
+*.sqlite3
+
+# ---- If you keep "manifests" you DO want to commit ----
+# (Remove this section if you do NOT have data/manifests tracked)
+!data/manifests/
+!data/manifests/**

@@ -1,0 +1,10 @@
+{
+    "vintage": "2024",
+    "pmtiles_url": "https://data.storypath.studio/pmtiles/places_cb_2024_500k_z5.pmtiles",
+    "attrs_base_url": "https://data.storypath.studio/attrs/places/acs5_2024/",
+    "sha256": {
+      "places_pmtiles": "…",
+      "attrs_08": "…"
+    }
+  }
+  
