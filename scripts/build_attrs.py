@@ -25,6 +25,49 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 
+# ---------------------------
+# Optional derived fields (from boundary attributes)
+# ---------------------------
+
+M2_PER_SQMI = 2_589_988.110336
+
+def load_aland_by_geoid(areaindex_geojson_path: str) -> Dict[str, int]:
+    """
+    Load a lightweight GeoJSON (attributes-only is fine) that contains GEOID and ALAND (m^2).
+
+    Expected shape (typical ogr2ogr output):
+      {"type":"FeatureCollection","features":[{"properties":{"GEOID":"0846465","ALAND":123...},...},...]}
+
+    Returns:
+      { "0846465": 123456789, ... }  # ALAND in square meters
+    """
+    p = Path(areaindex_geojson_path)
+    if not p.exists():
+        raise FileNotFoundError(f"areaindex_geojson not found: {areaindex_geojson_path}")
+
+    gj = json.loads(p.read_text(encoding="utf-8"))
+    out: Dict[str, int] = {}
+
+    for feat in gj.get("features", []):
+        props = (feat.get("properties") or {})
+        geoid = str(props.get("GEOID") or "").strip()
+        aland = props.get("ALAND")
+
+        if len(geoid) != 7 or aland is None:
+            continue
+
+        try:
+            out[geoid] = int(aland)
+        except (ValueError, TypeError):
+            # sometimes comes in as a string or float-ish
+            try:
+                out[geoid] = int(float(str(aland)))
+            except Exception:
+                continue
+
+    return out
+
+
 
 CONFIG_PATH = "config.json"
 
@@ -117,6 +160,24 @@ def main() -> None:
     outputs = cfg["outputs"]
     api = cfg["census_api"]
 
+    # Optional: compute derived fields (e.g., population density) using boundary attributes (ALAND).
+    # Enable by adding to config.json:
+    #   "areas": {
+    #     "areaindex_geojson": "data/work/places_cb_2024_500k_areaindex.geojson",
+    #     "density_output_key": "pop_density_sqmi",
+    #     "density_round": 1
+    #   }
+    areas_cfg = cfg.get("areas", {}) or {}
+    areaindex_geojson = areas_cfg.get("areaindex_geojson")
+    density_key = areas_cfg.get("density_output_key", "pop_density_sqmi")
+    density_round = areas_cfg.get("density_round", 1)
+
+    aland_by_geoid: Dict[str, int] = {}
+    compute_density = bool(areaindex_geojson)
+
+    if compute_density:
+        aland_by_geoid = load_aland_by_geoid(str(areaindex_geojson))
+
     base_url: str = api["base_url"]  # e.g. https://api.census.gov/data/2024/acs/acs5/profile
 
     dist_dir = Path(outputs["dist_dir"])
@@ -185,6 +246,17 @@ def main() -> None:
                 raw = r[idx[f["var"]]]
                 rec[f["key"]] = parse_value(raw, f.get("type", "float"))
 
+            # Derived: population density (people / square mile)
+            if compute_density:
+                pop = rec.get("pop_total")
+                aland_m2 = aland_by_geoid.get(geoid)
+                dens = None
+                if pop is not None and aland_m2 and aland_m2 > 0:
+                    land_sqmi = aland_m2 / M2_PER_SQMI
+                    if land_sqmi > 0:
+                        dens = round(float(pop) / land_sqmi, int(density_round))
+                rec[density_key] = dens
+
             out[geoid] = rec
             written += 1
 
@@ -226,9 +298,20 @@ def main() -> None:
             "files": files_out
         },
 
+
         "schema": {
             "join_key": cfg["join_key"],
-            "fields": fields
+            "fields": fields,
+            "derived_fields": ([
+                {
+                    "key": density_key,
+                    "type": "float",
+                    "units": "people/sqmi",
+                    "derived": True,
+                    "formula": "pop_total / (ALAND_m2 / 2589988.110336)",
+                    "sources": ["ACS pop_total", "CB Places ALAND"]
+                }
+            ] if compute_density else [])
         },
 
         "totals": totals
@@ -244,3 +327,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+    

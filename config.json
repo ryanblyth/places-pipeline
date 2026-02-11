@@ -26,6 +26,12 @@
       "for": "place:*",
       "in": "state:*"
     },
+
+    "areas": {
+      "areaindex_geojson": "data/work/places_cb_2024_500k_areaindex.geojson",
+      "density_output_key": "pop_density_sqmi",
+      "density_round": 1
+    },
   
     "fields": [
       { "key": "pop_total", "var": "DP05_0001E", "type": "int", "units": "people" },
